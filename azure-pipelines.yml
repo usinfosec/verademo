@@ -11,6 +11,7 @@ pool:
 
 steps:
 - task: Maven@3
+  displayName: Build with Maven
   inputs:
     mavenPomFile: 'pom.xml'
     mavenOptions: '-Xmx3072m'
@@ -20,3 +21,42 @@ steps:
     publishJUnitResults: true
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
     goals: 'package'
+
+- task: Veracode@2
+  displayName: Veracode Static Scan 
+  inputs:
+    ConnectionDetailsSelection: 'Endpoint'
+    AnalysisService: 'AzureVeraDemo'
+    veracodeAppProfile: 'AzureVeraDemo'
+    version: '$(build.buildNumber)'
+    filepath: '/home/vsts/work/1/s/target/verademo.war'
+    createProfile: false
+    scanStatusCheckInterval: '60'
+    importResults: true
+    failBuildOnPolicyFail: false
+
+- task: Veracode Flaw Importer@2
+  displayName: Veracode Flaw Import
+  inputs:
+    ConnectionDetailsSelection: 'Endpoint'
+    AnalysisService: 'AzureVeraDemo'
+    veracodeAppProfile: 'AzureVeraDemo'
+    sandboxName: 
+    importType: 'All Unmitigated Flaws Violating Policy'
+    workItemType: 'Issue'
+    area: '$(system.teamProject)'
+    addCustomTag: 'Veracode'
+    flawImportLimit: '1000'
+
+- task: Bash@3
+  displayName: Veracode SCA scan
+  inputs:
+    targetType: 'inline'
+    script: |
+      export SRCCLR_SCM_NAME=AzureVeraDemo
+      export SRCCLR_SCM_URI=https://github.com/usinfosec/verademo
+      export SRCCLR_SCM_REF=master
+      export SRCCLR_SCM_REF_TYPE=branch
+      export SRCCLR_SCM_REV=123456
+      export SRCCLR_API_TOKEN="$(SRCCLR_API_TOKEN)"
+      curl -sSL https://download.sourceclear.com/ci.sh | bash -s -- scan --skip-compile --update-advisor
