@@ -20,3 +20,18 @@ steps:
     publishJUnitResults: true
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
     goals: 'package'
+
+- task: AzurePowerShell@3
+    displayName: 'Azure Powershell script: SourceClear'
+    inputs:
+        azureSubscription: ’customer’s_azure_subscription_id'
+        ScriptType: 'InlineScript'
+        Inline: |
+            $Env:SRCCLR_API_TOKEN=“customer’s_api_token"
+
+            Set-ExecutionPolicy AllSigned -Scope Process -Force
+
+            iex ((New-Object System.Net.WebClient).DownloadString('https://download.srcclr.com/ci.ps1'))
+
+            srcclr scan $(Build.SourcesDirectory) --debug --allow-dirty
+      azurePowerShellVersion: 'LatestVersion'
