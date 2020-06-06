@@ -61,14 +61,3 @@ steps:
     workItemType: 'Bug'
     area: '$(system.teamProject)'
     flawImportLimit: '1000'
-
-- task: PowerShell@2
-  inputs:
-    targetType: 'inline'
-    script: |
-      Write-Output 'Download PipelineScanner'
-      (New-Object System.Net.WebClient).DownloadFile('https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip', '/pipeline-scan-LATEST.zip')
-      Write-Output 'Unzip PipelineScanner'
-      Expand-Archive -force /pipeline-scan-LATEST.zip
-      Write-Output 'Run PipelineScanner'
-      java -jar .\pipeline-scan-LATEST\pipeline-scan.jar -vid $API_ID -vkey $API_KEY -f $(build.artifactstagingdirectory)\target\*.war
