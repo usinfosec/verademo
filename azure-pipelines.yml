@@ -39,7 +39,7 @@ steps:
 - task: Veracode@2
   inputs:
     ConnectionDetailsSelection: 'Endpoint'
-    AnalysisService: 'VeracodeServiceConnection'
+    AnalysisService: 'veracodeAzureJSKAPI'
     veracodeAppProfile: 'AzureVeraDemo'
     version: '$(build.buildNumber)'
     filepath: 'target/verademo.war'
@@ -52,7 +52,7 @@ steps:
 - task: Veracode Flaw Importer@2
   inputs:
     ConnectionDetailsSelection: 'Endpoint'
-    AnalysisService: 'VeracodeServiceConnection'
+    AnalysisService: 'veracodeAzureJSKAPI'
     veracodeAppProfile: 'AzureVeraDemo'
     sandboxName: 
     importType: 'All Flaws'
