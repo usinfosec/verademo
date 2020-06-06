@@ -55,7 +55,7 @@ steps:
   inputs:
     ConnectionDetailsSelection: 'Endpoint'
     AnalysisService: 'veracodeAzureJSKAPI'
-    veracodeAppProfile: '$(system.teamProject)'
+    veracodeAppProfile: 'AzureVeraDemo'
     sandboxName: 'ADOVeraDemoJava'
     importType: 'All Unmitigated Flaws Violating Policy'
     workItemType: 'Bug'
