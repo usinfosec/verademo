@@ -61,7 +61,7 @@ steps:
     area: '$(system.teamProject)'
     flawImportLimit: '1000'
 
-- task: PowerShell@2
+- task: PowerShell@3
   inputs:
     targetType: 'inline'
     script: |
