@@ -35,3 +35,14 @@ steps:
       # Use predefined azure pipeline variable Build.SourcesDirectory to locate your repository
       # Finally scan it with our awesome tool! 
       srcclr scan $(Build.SourcesDirectory)
+
+task: PowerShell@2
+  inputs:
+    targetType: 'inline'
+    script: |
+      Write-Output 'Download PipelineScanner'
+      (New-Object System.Net.WebClient).DownloadFile('https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip', '/pipeline-scan-LATEST.zip')
+      Write-Output 'Unzip PipelineScanner'
+      Expand-Archive -force /pipeline-scan-LATEST.zip
+      Write-Output 'Run PipelineScanner'
+      java -jar .\pipeline-scan-LATEST\pipeline-scan.jar -vid $env:API_ID -vkey $env:API_KEY -f $(build.artifactstagingdirectory)\target\*.war
