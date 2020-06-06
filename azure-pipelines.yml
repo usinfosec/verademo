@@ -36,13 +36,28 @@ steps:
       # Finally scan it with our awesome tool! 
       srcclr scan $(Build.SourcesDirectory)
 
-- task: PowerShell@2
+- task: Veracode@3
   inputs:
-    targetType: 'inline'
-    script: |
-      Write-Output 'Download PipelineScanner'
-      (New-Object System.Net.WebClient).DownloadFile('https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip', '/pipeline-scan-LATEST.zip')
-      Write-Output 'Unzip PipelineScanner'
-      Expand-Archive -force /pipeline-scan-LATEST.zip
-      Write-Output 'Run PipelineScanner'
-      java -jar .\pipeline-scan-LATEST\pipeline-scan.jar -vid $env:API_ID -vkey $env:API_KEY -f $(build.artifactstagingdirectory)\target\*.war
+    ConnectionDetailsSelection: 'Endpoint'
+    AnalysisService: 'veracodeAzureJSKAPI'
+    veracodeAppProfile: 'AzureVeraDemo'
+    version: '$(build.buildNumber)'
+    filepath: 'target/verademo.war'
+    sandboxName: 'ADOVeraDemoJava'
+    createSandBox: false
+    createProfile: false
+    failTheBuildIfVeracodeScanDidNotInitiate: false
+    scanStatusCheckInterval: '60'
+    importResults: true
+    failBuildOnPolicyFail: false
+
+- task: Veracode Flaw Importer@3
+  inputs:
+    ConnectionDetailsSelection: 'Endpoint'
+    AnalysisService: 'veracodeAzureJSKAPI'
+    veracodeAppProfile: '$(system.teamProject)'
+    sandboxName: 'ADOVeraDemoJava'
+    importType: 'All Unmitigated Flaws Violating Policy'
+    workItemType: 'Bug'
+    area: '$(system.teamProject)'
+    flawImportLimit: '1000'
