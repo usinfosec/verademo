@@ -35,7 +35,7 @@ steps:
       # Use predefined azure pipeline variable Build.SourcesDirectory to locate your repository
       # Finally scan it with our awesome tool! 
       srcclr scan $(Build.SourcesDirectory)
-      
+
 - task: Veracode@2
   inputs:
     ConnectionDetailsSelection: 'Endpoint'
@@ -49,6 +49,7 @@ steps:
     scanStatusCheckInterval: '60'
     importResults: true
     failBuildOnPolicyFail: false
+
 - task: Veracode Flaw Importer@2
   inputs:
     ConnectionDetailsSelection: 'Endpoint'
