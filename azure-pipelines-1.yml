@@ -1,0 +1,37 @@
+# Maven
+# Build your Java project and run tests with Apache Maven.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/java
+
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: Maven@3
+  inputs:
+    mavenPomFile: 'pom.xml'
+    mavenOptions: '-Xmx3072m'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.8'
+    jdkArchitectureOption: 'x64'
+    publishJUnitResults: true
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    goals: 'package'
+
+- task: PowerShell@2
+  displayName: Veracode Software Composition Analysis OSS check
+  inputs:
+    targetType: 'inline'
+    script: |
+      $env:SRCCLR_SCM_NAME="AzureVeraDemo"
+      $env:SRCCLR_SCM_URI="https://github.com/usinfosec/verademo"
+      $env:SRCCLR_SCM_REF="master"
+      $env:SRCCLR_SCM_REF_TYPE="branch"
+      $env:SRCCLR_SCM_REV="123456"
+      $env:SRCCLR_API_TOKEN="$(SCATOKEN)"
+      Set-ExecutionPolicy AllSigned -Scope Process -Force
+      iex ((New-Object System.Net.WebClient).DownloadString('https://download.srcclr.com/ci.ps1'))
+      srcclr scan
