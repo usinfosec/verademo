@@ -26,7 +26,6 @@ steps:
   inputs:
     targetType: 'inline'
     script: |
-      $env:SRCCLR_SCM_NAME="AzureVeraDemo"
       $env:SRCCLR_SCM_URI="https://github.com/usinfosec/verademo"
       $env:SRCCLR_SCM_REF="master"
       $env:SRCCLR_SCM_REF_TYPE="branch"
