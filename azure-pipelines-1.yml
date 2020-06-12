@@ -31,6 +31,7 @@ steps:
       $env:SRCCLR_SCM_REF_TYPE="branch"
       $env:SRCCLR_SCM_REV="123456"
       $env:SRCCLR_API_TOKEN="$(SCATOKEN)"
+      ProgressPreference = "silentlyContinue"
       Set-ExecutionPolicy AllSigned -Scope Process -Force
       iex ((New-Object System.Net.WebClient).DownloadString('https://download.srcclr.com/ci.ps1'))
       srcclr scan
