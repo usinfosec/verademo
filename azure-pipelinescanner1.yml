@@ -1,0 +1,110 @@
+trigger:
+- master
+
+pool:
+  name: Hosted VS2017
+  demands:
+  - msbuild
+  - visualstudio
+  - vstest
+  - java
+
+steps:
+- task: NuGetToolInstaller@0
+  displayName: 'Use NuGet 4.4.1'
+  inputs:
+    versionSpec: 4.4.1
+
+- task: NuGetCommand@2
+  displayName: 'NuGet restore'
+  inputs:
+    restoreSolution: '**\*.sln'
+
+- task: VSBuild@1
+  displayName: 'Build solution **\*.sln - $(Parameters.solution)'
+  inputs:
+  #  solution: '$(Parameters.solution)'
+    solution: '**\*.sln'
+    msbuildArgs: '/p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactstagingdirectory)/" /p:DebugSymbols=true'
+    platform: '$(BuildPlatform)'
+    configuration: '$(BuildConfiguration)'
+    clean: true
+    maximumCpuCount: true
+
+- task: VSTest@2
+  displayName: 'VsTest - testAssemblies'
+  inputs:
+    testAssemblyVer2: |
+     **\$(BuildConfiguration)\*test*.dll
+     !**\obj\**
+    platform: '$(BuildPlatform)'
+    configuration: '$(BuildConfiguration)'
+    diagnosticsEnabled: True
+
+- task: PublishSymbols@2
+  displayName: 'Publish symbols path'
+  inputs:
+    SearchPattern: '**\bin\**\*.pdb'
+    PublishSymbols: false
+  continueOnError: true
+
+- task: CopyFiles@2
+  displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
+  inputs:
+    SourceFolder: '$(system.defaultworkingdirectory)'
+    Contents: '**\bin\**'
+    TargetFolder: '$(build.artifactstagingdirectory)'
+  condition: succeededOrFailed()
+
+- powershell: |
+   Set-ExecutionPolicy AllSigned -Scope Process -Force
+   $ProgressPreference = 'SilentlyContinue'
+   iex ((New-Object System.Net.WebClient).DownloadString('https://download.srcclr.com/ci.ps1')); srcclr scan --allow-dirty
+  displayName: 'SRCCLR Command Line Script'
+  continueOnError: true
+  env:
+    SRCCLR_API_TOKEN: $(SRCCLR_API_TOKEN)
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: drop'
+  inputs:
+    PathtoPublish: '$(build.artifactstagingdirectory)'
+  condition: succeededOrFailed()
+
+- task: ArchiveFiles@2
+  displayName: 'Archive $(build.artifactstagingdirectory)'
+  inputs:
+    rootFolderOrFile: '$(build.artifactstagingdirectory)'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/Verademo-net.zip'
+
+- script: |
+   curl -O -L https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+  displayName: 'Download Pipeline Scanner'
+
+- task: ExtractFiles@1
+  inputs:
+    archiveFilePatterns: 'pipeline-scan-LATEST.zip'
+    destinationFolder: 'pipeline'
+    cleanDestinationFolder: false
+
+- script: |
+   java -jar pipeline\pipeline-scan.jar --veracode_api_id "$(VERACODE_API_ID)" --veracode_api_key "$(VERACODE_API_KEY)" --file "$(Build.ArtifactStagingDirectory)/Verademo-net.zip"
+  env:
+    VERACODE_API_ID: $(VERACODE_API_ID)
+    VERACODE_API_KEY: $(VERACODE_API_KEY)
+  displayName: 'Run Pipeline Scan'
+# Don't break the build because this is a demo...
+  continueOnError: true
+
+- task: Veracode.veracode-vsts-build-extension.veracode-scanner-task.Veracode@2
+  displayName: 'Upload and scan: $(Build.ArtifactStagingDirectory)/Verademo-net.zip'
+  inputs:
+    AnalysisService: 'API account'
+    filepath: '$(Build.ArtifactStagingDirectory)/Verademo-net.zip'
+    importResults: true
+
+- task: Veracode.veracode-vsts-build-extension.veracode-flaw-importer-task.Veracode Flaw Importer@2
+  displayName: 'Import flaws: $(system.teamProject) - '
+  inputs:
+    AnalysisService: 'API account'
+    flawImportLimit: 5000
