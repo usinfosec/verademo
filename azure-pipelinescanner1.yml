@@ -96,15 +96,3 @@ steps:
 # Don't break the build because this is a demo...
   continueOnError: true
 
-- task: Veracode.veracode-vsts-build-extension.veracode-scanner-task.Veracode@2
-  displayName: 'Upload and scan: $(Build.ArtifactStagingDirectory)/Verademo-net.zip'
-  inputs:
-    AnalysisService: 'API account'
-    filepath: '$(Build.ArtifactStagingDirectory)/Verademo-net.zip'
-    importResults: true
-
-- task: Veracode.veracode-vsts-build-extension.veracode-flaw-importer-task.Veracode Flaw Importer@2
-  displayName: 'Import flaws: $(system.teamProject) - '
-  inputs:
-    AnalysisService: 'API account'
-    flawImportLimit: 5000
