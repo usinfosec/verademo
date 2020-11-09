@@ -1,0 +1,42 @@
+pipeline
+{
+    agent any
+	
+    stages 
+    {
+        stage('Build') 
+        { 
+            steps 
+            {
+                sh 'mvn clean install' 
+            }
+        }
+
+        stage ('Veracode Pipeline scan') 
+        {
+            steps 
+            {
+                	
+                echo 'Begin Veracode pipeline scan!'
+
+                // Download pipeline scanner: make sure have the most recent.  Could even put block to only download 1 per day
+                sh 'curl  https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip -o pipeline-scan.zip'
+		sh 'unzip -o pipeline-scan.zip'
+               
+                withCredentials([ usernamePassword ( 
+                    credentialsId: 'JenkinsIDKEY', usernameVariable: 'VERACODE_ID', passwordVariable: 'VERACODE_KEY') ]) 
+                    {
+		       // Example scan that will fail if any Very High, High, CWE-80 flaws encountered
+                       sh """
+                           java -jar pipeline-scan.jar \
+                               --veracode_api_id "${VERACODE_ID}" \
+                               --veracode_api_key "${VERACODE_KEY}" \
+                               --file "target/verademo.war" \
+                               --fail_on_severity="Very High, High" \
+                               --fail_on_cwe="80" 
+                       """
+                    }      			
+            }
+        }
+    }
+}
