@@ -1,98 +1,41 @@
 trigger:
-- master
-
+- none
+ 
 pool:
-  name: Hosted VS2017
-  demands:
-  - msbuild
-  - visualstudio
-  - vstest
-  - java
-
+  vmImage: 'ubuntu-latest'
+ 
 steps:
-- task: NuGetToolInstaller@0
-  displayName: 'Use NuGet 4.4.1'
-  inputs:
-    versionSpec: 4.4.1
+- task: Maven@3
+  displayName: 'build verademo'
+  inputs:
+    mavenPomFile: 'pom.xml'
+    options: '-q'
+    mavenOptions: '-Xmx3072m'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.8'
+    jdkArchitectureOption: 'x64'
+    publishJUnitResults: true
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    goals: 'package'
 
-- task: NuGetCommand@2
-  displayName: 'NuGet restore'
-  inputs:
-    restoreSolution: '**\*.sln'
-
-- task: VSBuild@1
-  displayName: 'Build solution **\*.sln - $(Parameters.solution)'
-  inputs:
-  #  solution: '$(Parameters.solution)'
-    solution: '**\*.sln'
-    msbuildArgs: '/p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactstagingdirectory)/" /p:DebugSymbols=true'
-    platform: '$(BuildPlatform)'
-    configuration: '$(BuildConfiguration)'
-    clean: true
-    maximumCpuCount: true
-
-- task: VSTest@2
-  displayName: 'VsTest - testAssemblies'
-  inputs:
-    testAssemblyVer2: |
-     **\$(BuildConfiguration)\*test*.dll
-     !**\obj\**
-    platform: '$(BuildPlatform)'
-    configuration: '$(BuildConfiguration)'
-    diagnosticsEnabled: True
-
-- task: PublishSymbols@2
-  displayName: 'Publish symbols path'
-  inputs:
-    SearchPattern: '**\bin\**\*.pdb'
-    PublishSymbols: false
-  continueOnError: true
-
-- task: CopyFiles@2
-  displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
-  inputs:
-    SourceFolder: '$(system.defaultworkingdirectory)'
-    Contents: '**\bin\**'
-    TargetFolder: '$(build.artifactstagingdirectory)'
-  condition: succeededOrFailed()
-
-- powershell: |
-   Set-ExecutionPolicy AllSigned -Scope Process -Force
-   $ProgressPreference = 'SilentlyContinue'
-   iex ((New-Object System.Net.WebClient).DownloadString('https://download.srcclr.com/ci.ps1')); srcclr scan --allow-dirty
-  displayName: 'SRCCLR Command Line Script'
-  continueOnError: true
-  env:
-    SRCCLR_API_TOKEN: $(SRCCLR_API_TOKEN)
-
-- task: PublishBuildArtifacts@1
-  displayName: 'Publish Artifact: drop'
-  inputs:
-    PathtoPublish: '$(build.artifactstagingdirectory)'
-  condition: succeededOrFailed()
-
-- task: ArchiveFiles@2
-  displayName: 'Archive $(build.artifactstagingdirectory)'
-  inputs:
-    rootFolderOrFile: '$(build.artifactstagingdirectory)'
-    archiveFile: '$(Build.ArtifactStagingDirectory)/Verademo-net.zip'
-
-- script: |
-   curl -O -L https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
-  displayName: 'Download Pipeline Scanner'
-
-- task: ExtractFiles@1
-  inputs:
-    archiveFilePatterns: 'pipeline-scan-LATEST.zip'
-    destinationFolder: 'pipeline'
-    cleanDestinationFolder: false
-
-- script: |
-   java -jar pipeline\pipeline-scan.jar --veracode_api_id "$(VERACODE_API_ID)" --veracode_api_key "$(VERACODE_API_KEY)" --file "$(Build.ArtifactStagingDirectory)/Verademo-net.zip"
-  env:
-    VERACODE_API_ID: $(VERACODE_API_ID)
-    VERACODE_API_KEY: $(VERACODE_API_KEY)
-  displayName: 'Run Pipeline Scan'
-# Don't break the build because this is a demo...
-  continueOnError: true
-
+- task: Bash@3
+  displayName: 'Veracode SCA scan'
+  inputs:
+     targetType: 'inline'
+     script: |
+          export SRCCLR_SCM_URI=https://github.com/usinfosec/verademo
+          export SRCCLR_API_TOKEN="$(SRCCLR_API_TOKEN)"
+          export SRCCLR_SCM_REF=master
+          export SRCCLR_SCM_REF_TYPE=branch
+          export SRCCLR_SCM_REV=123456
+          curl -sSL https://download.sourceclear.com/ci.sh | bash -s -- scan --update-advisor
+- task: Bash@3
+  displayName: Veracode Pipeline
+  inputs:
+    targetType: 'inline'
+    script: |
+      curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+      unzip pipeline-scan-LATEST.zip
+      java -jar pipeline-scan.jar -vid $(vid) -vkey $(vkey) --fail_on_severity="Very  High,  High" -id=true -so=true -sf results.txt -f /home/vsts/work/1/s/target/verademo.war
+    upload: /**/results.txt
+    artifact: pipeline
