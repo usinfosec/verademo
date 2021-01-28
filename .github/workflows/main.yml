@@ -1,0 +1,95 @@
+# This workflow runs both a SAST 'pipeline scan' and SCA scan in parallel
+
+name: Veracode Static Analysis Pipeline Scan
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  # This workflow contains a job to build and submit pipeline scan, you will need to customize the build process accordingly and make sure the artifact you build is used as the file input to the pipeline scan file parameter
+  Build-and-Run-SAST-scan:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    steps:
+    
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it and copies all sources into ZIP file for submitting for analysis. Replace this section with your applications build steps
+    - name: Repo check-out
+      uses: actions/checkout@v2
+      with:
+        repository: ''
+
+    - name: Build using Maven 
+      run: mvn clean install
+
+    - name: Zip up scanning artifact
+      uses: papeloto/action-zip@v1
+      with:
+        files: /target/verademo.war
+        recursive: true
+        dest: verademo.zip
+    
+    - name: Store scanning artifact as Build Artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: SAST Scan Artifact
+        path: verademo.zip
+    
+    - name: Downloading Pipeline Scan CLI
+      uses: wei/curl@master
+      with:
+        args: -O https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+    
+    - name: Unzip Pipeline Scan CLI
+      run: unzip -o pipeline-scan-LATEST.zip
+    
+    - name: Setting up Java
+      uses: actions/setup-java@v1
+      with:
+        java-version: 1.8
+    
+    - name: Running SAST scan
+      run: java -jar pipeline-scan.jar --veracode_api_id "${{secrets.VERACODE_API_ID}}" --veracode_api_key "${{secrets.VERACODE_API_KEY}}" --fail_on_severity="Very High, High" --file verademo.zip
+      continue-on-error: true
+    
+    - name: Store SAST results as Build Artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: SAST_Results
+        path: results.json
+        
+    - name: Convert pipeline scan output to SARIF format 
+      id: convert
+      uses: veracode/veracode-pipeline-scan-results-to-sarif@master
+      with:
+        pipeline-results-json: results.json
+        source-base-path-1: "com/:src/main/java/com/"
+    
+    - name: Push SARIF to GitHub
+      uses: github/codeql-action/upload-sarif@v1
+      with:
+        # Path to SARIF file relative to the root of the repository
+        sarif_file: veracode-results.sarif
+
+  Run-SCA-Scan:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    steps:
+    - name: Repo check-out
+      uses: actions/checkout@v2
+      with:
+        repository: ''
+    
+    - name: Download SCA Agent
+      run: curl -sSL https://srcclr.com/install | sh
+    
+    - name: Running SCA Scan
+      run: SRCCLR_API_TOKEN="${{secrets.SRCCLR_API_TOKEN}}" srcclr scan --ws "${{secrets.SRCCLR_WS_ID}}" >> sca_results.txt
+    
+    - name: Store SCA results as Build Artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: SCA_Results
+        path: sca_results.txt
