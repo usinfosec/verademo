@@ -26,11 +26,12 @@ steps:
   inputs:
     targetType: 'inline'
     script: |
-      $env:SRCCLR_SCM_URI="https://github.com/usinfosec/verademo"
-      $env:SRCCLR_SCM_REF="master"
-      $env:SRCCLR_SCM_REF_TYPE="branch"
-      $env:SRCCLR_SCM_REV="123456"
+      //$env:SRCCLR_SCM_URI="https://github.com/usinfosec/verademo"
+      //$env:SRCCLR_SCM_REF="master"
+      //$env:SRCCLR_SCM_REF_TYPE="branch"
+      //$env:SRCCLR_SCM_REV="123456"
       $env:SRCCLR_API_TOKEN="$(SCATOKEN)"
       Set-ExecutionPolicy AllSigned -Scope Process -Force
+      $ProgressPreference = 'SilentlyContinue'
       iex ((New-Object System.Net.WebClient).DownloadString('https://download.srcclr.com/ci.ps1'))
       srcclr scan
