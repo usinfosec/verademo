@@ -27,7 +27,7 @@ steps:
     targetType: 'inline'
     script: |
       $env:SRCCLR_SCM_NAME="AzureVeraDemo"
-      $env:SRCCLR_API_TOKEN="$(SCATOKEN)"
+      $env:SRCCLR_API_TOKEN="$(SRCCLR_API_TOKEN)"
       Set-ExecutionPolicy AllSigned -Scope Process -Force
       $ProgressPreference = 'SilentlyContinue'
       iex ((New-Object System.Net.WebClient).DownloadString('https://download.srcclr.com/ci.ps1'))
